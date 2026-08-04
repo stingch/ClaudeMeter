@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <b>一個基於 ESP32 TFT LCD 螢幕與電腦端 BLE Bridge 的即時 Claude AI 額度儀表板</b><br>
-  <i>靈感來自開源專案 <a href="https://github.com/HermannBjorgvin/Clawdmeter">HermannBjorgvin/Clawdmeter</a>，採用常見 ESP32-S + 2.2" TFT 模組實現</i>
+  <b>一個基於常見 ESP32-S + 2.2" TFT 螢幕與電腦端 BLE Bridge 的即時 Claude AI 額度儀表板</b><br>
+  <i>A desktop hardware monitor that displays your Claude AI usage and rate limits in real-time over Bluetooth Low Energy.</i>
 </p>
 
 ---
@@ -18,7 +18,7 @@
 ## 📷 展示 (Preview)
 
 > [!TIP]
-> 💡 **圖片補充說明**：您可以在此放置您的 ESP32 實體照片或動態展示 GIF。
+> 💡 您可以在此放入您製作好的 ESP32 實體照片或動態展示 GIF。
 
 | 🖥️ 實體儀表板展示 | 📊 雙層額度卡片與動態動畫 |
 | :---: | :---: |
@@ -26,162 +26,108 @@
 
 ---
 
-## 💡 專案緣起與解決痛點 (Problem Statement & Motivation)
+## 🛠️ 硬體需求與材料清單 (Bill of Materials)
 
-> **「重度使用 AI 程式開發時，最怕心流中斷於突如其來的額度限制限制。」**
+本專案採用常見、便宜且易於取得的硬體模組：
 
-Claude.ai 提供了強大的 AI 輔助能力，但其 **5-Hour Session 彈性額度** 與 **7-Day Weekly 總額度** 的計算機制對開發者而言較為隱晦。使用者若僅依靠網頁介面，無法在開發過程中即時掌握剩餘額度與倒數重置時間，經常面臨寫程式寫到一半突然觸發 Rate Limit 的窘境。
-
-本專案旨在解決此痛點：**打造一個獨立、無感且低功耗的桌面實體儀表板**。開發者只需抬頭一瞥即可掌握即時狀態，無須切換瀏覽器分頁，完整保護專注開發的心流 (Flow State)。
-
----
-
-## 🚀 專案亮點 (Key Features)
-
-- 🎨 **精緻流暢 UI/UX 設計**：採用 320x240 ST7789/ILI9341 TFT 雙緩衝繪製，支援 60 FPS 平滑數值漸變 (Lerp Animation)。
-- 👾 **動態點陣吉祥物與星芒**：內建自訂像素風格 Claude 吉祥物（帶 Y 軸懸浮動態）與 360 度旋轉星芒動態渲染。
-- ⏱️ **雙重額度即時追蹤**：同時顯示 **5-Hour Session** 與 **7-Day Weekly** 額度百分比及精準重置倒數時間。
-- 📡 **無感低功耗 BLE 傳輸**：電腦端定時（每 60 秒）抓取 API 並自動發送 8-byte 二進位極簡封包至 ESP32。
-- 🔒 **環境變數安全防護**：認證憑證與 Session Cookie 完全自程式碼分離，透過 `.env` 機制管理。
+- **ESP32-S 開發板** (如 ESP32-WROOM-32 或 ESP32-S3) x 1
+- **2.2" / 2.4" TFT SPI LCD 顯示螢幕** (解析度 320x240，驅動晶片 ST7789 或 ILI9341) x 1
+- **杜邦線 / 面包板** 若干
 
 ---
 
-## 📐 系統架構 (Architecture)
+## 🔌 螢幕接線指南 (Pinout Table)
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Claude as Claude.ai API
-    participant PC as PC BLE Bridge (Python)
-    participant ESP32 as ESP32 Display (C++)
-
-    PC->>Claude: 定時 HTTP 請求抓取 Usage JSON
-    Claude-->>PC: 回傳 Session & Weekly 數據
-    PC->>PC: 打包成 8-Bytes 數據封包 (struct.pack)
-    PC->>ESP32: 經由 BLE 寫入 Characteristic
-    ESP32->>ESP32: 觸發繪圖引擎，平滑漸變更新 UI
-```
-
----
-
-## 🎯 系統設計哲學與工程考量 (Engineering Rationale & Trade-offs)
-
-本專案在規劃與實作過程中，方針重點在於**技術選型合理性、硬體資源最佳化與生產級安全規範**：
-
-1. **為什麼選擇 BLE Bridge 而非 ESP32 直連 Wi-Fi？**
-   - **簡化設定與資訊安全**：避免在 MCU 韌體中硬編碼 Wi-Fi 帳密或實作複雜的配網 (Captive Portal)。利用 PC 現有的網路連線與 Session Cookie，ESP32 僅需專注於 BLE 接收與 UI 渲染。
-   - **極低功耗與無感連線**：BLE 通訊具備快速建立連線與低功耗特性，電腦開機自動背景輪詢。
-
-2. **為什麼採用 8-Byte C-Struct 二進位封包而非傳送 JSON？**
-   - **記憶體碎片化防範**：在微控制器 (MCU) 上解析字串動態 JSON 會頻繁分配 Heap 記憶體，容易引發 Memory Leak 或碎片化崩潰。
-   - **通訊負擔降低 >95%**：透過 Python `struct.pack` 將 JSON 數據壓縮為僅 **8 個 Bytes** 的定長二進位封包，ESP32 接收後透過 C 指針型態轉換實現 **Zero-copy** 零開銷解析（解析時間 < 1ms）。
-
-3. **60 FPS 流暢雙緩衝與演算法優化 (UI Performance)**：
-   - **消除畫面撕裂 (Screen Tearing)**：利用 `TFT_eSPI` 建立 DRAM 雙緩衝畫布 (Sprite)，全影格繪製完成後一次性 Push 至螢幕。
-   - **Lerp (線性插值) 數值過渡**：針對 Session / Weekly 數值變化採用 Lerp 漸變演算法，使進度條動畫達到媲美行動裝置的流暢視覺體驗。
-
-4. **開源級安全防護 (Security Hygiene)**：
-   - **敏感資訊徹底隔離**：引進 `python-dotenv` 模組，將關鍵 Token 自版本控制中剔除，並建立完善的 `.env.example` 範本與缺失提醒機制。
-
----
-
-## 🛠️ 硬體與腳位設定 (Hardware & Pinout)
-
-### 1. 硬體需求
-- **ESP32 開發板** (如 ESP32-WROOM-32 或 ESP32-S3)
-- **2.4" / 2.8" TFT SPI LCD 螢幕** (解析度 320x240，控制晶片支援 ST7789 / ILI9341)
-
-### 2. 接線參考 (TFT SPI 接線)
-
-| ESP32 腳位 | TFT LCD 螢幕腳位 | 說明 |
+| ESP32-S 腳位 | TFT 螢幕腳位 | 說明 |
 | :--- | :--- | :--- |
-| **GPIO 21** | **BLK / LED** | 背光 PWM 控制 |
+| **GPIO 21** | **BLK / LED** | 背光控制 (PWM 亮度) |
 | **GPIO 18** | **SCK / SCL** | SPI 時脈線 |
 | **GPIO 23** | **SDA / MOSI**| SPI 數據線 |
 | **GPIO 5**  | **CS**         | SPI 晶片選擇 |
 | **GPIO 16** | **DC / RS**    | 數據/指令切換 |
 | **GPIO 17** | **RST / RES**  | 螢幕硬體重置 |
-| **3.3V**    | **VCC**        | 電源 positive |
-| **GND**     | **GND**        | 電源 接地 |
-
-> [!NOTE]
-> 請確保在 Arduino IDE 的 `TFT_eSPI` 函式庫中，將 `User_Setup.h` 配置為對應的螢幕驅動晶片與上述 GPIO 腳位。
+| **3.3V**    | **VCC**        | 電源 (3.3V) |
+| **GND**     | **GND**        | 接地 |
 
 ---
 
-## 💻 軟體安裝與設定 (Setup Guide)
+## ⚡ 運作原理 (How It Works)
 
-### 1. ESP32 韌體燒錄 (`esp32_firmware/`)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Claude as Claude.ai API
+    participant PC as PC Python Bridge
+    participant ESP32 as ESP32 Display
 
-1. 下載並安裝 [Arduino IDE](https://www.arduino.cc/en/software)。
+    PC->>Claude: 定時抓取 Usage API (Cookie 認證)
+    Claude-->>PC: 回傳 Usage JSON
+    PC->>PC: 壓縮為 8-Bytes 數據封包
+    PC->>ESP32: 經由 BLE 發送數據
+    ESP32->>ESP32: 60 FPS 平滑動畫渲染螢幕
+```
+
+1. 電腦端 Python 腳本每 60 秒透過已登入的 Cookie 抓取 [Claude.ai](https://claude.ai) API。
+2. 腳本將 Session (5-Hour) 與 Weekly (7-Day) 的額度百分比與倒數重置時間打包為 **8 個 Byte** 的輕量封包。
+3. 透過低功耗藍芽 (BLE) 無感發送給 ESP32，ESP32 收到後即時更新流暢的 UI 視覺卡片與漸變進度條。
+
+---
+
+## 💻 快速復現與安裝步驟 (Setup Guide)
+
+### 步驟 1：燒錄 ESP32 韌體 (`esp32_firmware/`)
+
+1. 開啟 [Arduino IDE](https://www.arduino.cc/en/software)。
 2. 安裝 ESP32 開發板支援 (板子管理員搜尋 `esp32` 並安裝)。
-3. 安裝必要庫：
-   - **TFT_eSPI** (Bodmer)
-4. 開啟 `esp32_firmware/ClaudeMeter.ino`。
-5. 選擇正確的 ESP32 開發板型號與 COM 埠，點擊 **Upload (燒錄)**。
+3. 在庫管理員中搜尋並安裝 **TFT_eSPI** 函式庫。
+4. 設定 `TFT_eSPI` 的 `User_Setup.h`（根據上面的接線對應 GPIO 腳位與螢幕晶片）。
+5. 打開 [`esp32_firmware/ClaudeMeter.ino`](file:///c:/Users/Jessie/Documents/code/Personal/Python%20Codes/claudeMeter/esp32_firmware/ClaudeMeter.ino)，選擇板子與序列埠後點擊 **Upload (燒錄)**。
 
 ---
 
-### 2. 電腦端轉接腳本設定 (`pc_bridge/`)
+### 步驟 2：設定電腦端 Python 環境 (`pc_bridge/`)
 
-#### A. 複製認證設定檔
-複製專案根目錄下的 `.env.example` 並重命名為 `.env`：
+1. **複製設定檔範本**：
+   ```bash
+   cp .env.example .env
+   ```
 
-```bash
-cp .env.example .env
-```
+2. **填入認證資訊**：
+   開啟瀏覽器登入 [Claude.ai](https://claude.ai)，按 `F12` 打開開發者工具 (Network 標籤頁)：
+   - 複製 `Cookie` 字串，填入 `.env` 中的 `CLAUDE_COOKIE='...'` (建議使用單引號包裹)。
+   - 複製 `Organization ID`，填入 `.env` 中的 `CLAUDE_ORG_ID="..."`。
 
-#### B. 取得 Claude.ai Session Cookie 與 Organization ID
-
-1. 開啟瀏覽器並登入 [Claude.ai](https://claude.ai)。
-2. 按 `F12` 打開開發者工具，切換至 **Network (網路)** 標籤頁。
-3. 在 Claude 頁面發送任意訊息或重新整理頁面。
-4. 找到 `usage` 或任意 API 請求：
-   - 從 **Request Headers** 中複製完整的 `Cookie` 字串，填入 `.env` 中的 `CLAUDE_COOKIE`。
-   - 從請求 URL (例如 `https://claude.ai/api/organizations/<ORG_ID>/usage`) 中複製 `ORG_ID`，填入 `.env` 中的 `CLAUDE_ORG_ID`。
-
-範例 `.env` 內容：
-```env
-CLAUDE_COOKIE="sessionKey=sk-ant-sid02-...; _cfuvid=...;"
-CLAUDE_ORG_ID="your_organization_id_here"
-```
-
-#### C. 安裝 Python 依賴
-
-建議使用 Python 3.10+ 及虛擬環境：
-
-```bash
-# 建立虛擬環境
-python -m venv venv
-
-# 啟動虛擬環境 (Windows)
-.\venv\Scripts\activate
-
-# 啟動虛擬環境 (macOS/Linux)
-source venv/bin/activate
-
-# 安裝套件
-pip install -r requirements.txt
-```
+3. **安裝 Python 套件**：
+   ```bash
+   python -m venv venv
+   
+   # Windows 啟動虛擬環境:
+   .\venv\Scripts\activate
+   
+   # macOS 啟動虛擬環境:
+   source venv/bin/activate
+   
+   pip install -r requirements.txt
+   ```
 
 ---
 
-## 🏃 執行方式 (Usage)
+## 🏃 啟動執行 (Usage)
 
-### 🖥️ Windows (推薦/已完整實測)
+### 🖥️ Windows (完整測試通過)
+
+確定電腦藍芽已開啟，並執行：
 
 ```bash
 python pc_bridge/ble_bridge_win.py
 ```
-> **運作機制**：Windows 腳本將作為 BLE Client，自動搜尋名為 `ClaudeMeter` 的 ESP32 裝置並將資料寫入。
 
 ---
 
-### 🍎 macOS 
+### 🍎 macOS (⚠️ 未測試 / Experimental)
 
 > [!WARNING]
-> ⚠️ **注意：macOS 版本目前為實驗性/未測試版本 (Experimental / Untested)**。
-> 由於 CoreBluetooth 系統權限與限制，macOS 腳本作為 BLE GATT Server 運行，供 ESP32 連線讀取。若您在 macOS 上進行了測試與改進，非常歡迎提交 PR 協助改進！
+> macOS 腳本目前為**實驗性/未測試版本 (Experimental / Untested)**。由於 CoreBluetooth 權限機制，macOS 腳本以 BLE GATT Server 模式運行。
 
 ```bash
 python pc_bridge/ble_bridge_MacOS.py
@@ -189,77 +135,49 @@ python pc_bridge/ble_bridge_MacOS.py
 
 ---
 
-## 📦 BLE 數據通訊協定 (Packet Protocol)
+## 📦 BLE 數據通訊格式 (Protocol)
 
-電腦端透過 BLE 發送 **8-Byte 二進位純數據封包** 給 ESP32：
-
-| Byte 索引 | 資料意義 | 資料型別 | 範例值 |
+| Byte 索引 | 數據意義 | 型別 | 範例 |
 | :--- | :--- | :--- | :--- |
-| `Byte 0` | 5-Hour Session 額度使用率 (%) | `uint8_t` (0~100) | `45` (代表 45%) |
-| `Byte 1` | 5-Hour 重置小時 (Hour) | `uint8_t` (0~23) | `18` (代表 18:xx) |
-| `Byte 2` | 5-Hour 重置分鐘 (Minute) | `uint8_t` (0~59) | `30` (代表 xx:30) |
-| `Byte 3` | 7-Day Weekly 額度使用率 (%) | `uint8_t` (0~100) | `12` (代表 12%) |
-| `Byte 4` | 7-Day 重置月份 (Month) | `uint8_t` (1~12) | `8` (代表 8 月) |
-| `Byte 5` | 7-Day 重置日期 (Day) | `uint8_t` (1~31) | `10` (代表 10 日) |
+| `Byte 0` | 5-Hour Session 額度使用率 (%) | `uint8_t` (0~100) | `45` (45%) |
+| `Byte 1` | 5-Hour 重置小時 (Hour) | `uint8_t` (0~23) | `18` |
+| `Byte 2` | 5-Hour 重置分鐘 (Minute) | `uint8_t` (0~59) | `30` |
+| `Byte 3` | 7-Day Weekly 額度使用率 (%) | `uint8_t` (0~100) | `12` (12%) |
+| `Byte 4` | 7-Day 重置月份 (Month) | `uint8_t` (1~12) | `8` |
+| `Byte 5` | 7-Day 重置日期 (Day) | `uint8_t` (1~31) | `10` |
 | `Byte 6` | 7-Day 重置小時 (Hour) | `uint8_t` (0~23) | `14` |
 | `Byte 7` | 7-Day 重置分鐘 (Minute) | `uint8_t` (0~59) | `0` |
 
 ---
 
-## ❓ 疑難排解 (Troubleshooting & FAQ)
+## ❓ 疑難排解 (Troubleshooting)
 
 <details>
-<summary><b>1. 電腦端提示未找到 ESP32 裝置？</b></summary>
-<ul>
-  <li>請確認 ESP32 已正常通電且螢幕運作中。</li>
-  <li>確認電腦藍芽已開啟。</li>
-  <li>確認 ESP32 程式碼中的 <code>DEVICE_NAME</code> 為 "ClaudeMeter"。</li>
-</ul>
+<summary><b>1. 找不到 ESP32 裝置？</b></summary>
+請確認 ESP32 已正確燒錄並通電，且電腦藍芽已開啟。
 </details>
 
 <details>
-<summary><b>2. 出現 HTTP 401 或 HTTP 403 錯誤？</b></summary>
-<ul>
-  <li>您的 Claude Session Cookie 可能已過期。請重新開啟瀏覽器登入 Claude.ai 並更新 <code>.env</code> 中的 <code>CLAUDE_COOKIE</code>。</li>
-</ul>
+<summary><b>2. HTTP 401 / 403 錯誤？</b></summary>
+您的 Cookie 可能已過期，請重新登入 Claude.ai 並更新 <code>.env</code> 中的 <code>CLAUDE_COOKIE</code>。
 </details>
 
 <details>
-<summary><b>3. ESP32 螢幕白屏或顯示異常？</b></summary>
-<ul>
-  <li>請檢查 SPI 接線是否牢固。</li>
-  <li>檢查 <code>TFT_eSPI</code> 的 <code>User_Setup.h</code> 設定是否對應您採用的螢幕驅動（ST7789 / ILI9341）與正確腳位。</li>
-</ul>
+<summary><b>3. 螢幕白屏或顯示錯亂？</b></summary>
+請檢查 SPI 接線以及 <code>TFT_eSPI</code> 函式庫中的 <code>User_Setup.h</code> 設定是否與您的螢幕晶片（ST7789/ILI9341）匹配。
 </details>
-
-## 👤 個人特質：痛點驅動、規劃與全棧實作 (Core Engineering Competencies)
-
-本專案展現了作者作為 Full-Stack / IoT 工程師的核心素養與個人特質：
-
-1. 🎯 **痛點驅動與產品思維 (Problem-Driven & Product Mindset)**：
-   - 不盲目追求複雜技術，而是從真實開發痛點（AI 額度限制中斷心流）出發，設計出極簡、高實用性的桌面輔助硬體。
-
-2. 🧠 **縝密的系統規劃能力 (Strategic System Planning)**：
-   - **通訊效能規劃**：評估 MCU 記憶體限制，放棄傳統 JSON 解析，規劃 8-Byte 二進位純數據協定將通訊開銷降低 >95%。
-   - **軟硬體分工規劃**：將高開銷的 API 抓取與反爬蟲擬態放在 PC 端，ESP32 僅專注 Low-power BLE 接收與 60 FPS UI 渲染。
-   - **資安規劃**：規範 `.env` 憑證隔離與範本提醒機制，確保開源安全。
-
-3. ⚙️ **端到端硬核實作與除錯力 (End-to-End Implementation Excellence)**：
-   - **雲端/網頁端**：Python `asyncio` 非同步架構 + `curl_cffi` 瀏覽器指紋擬態。
-   - **韌體/硬體端**：C++ ESP32 BLE GATT 服務、`TFT_eSPI` 雙緩衝 60 FPS 繪圖引擎、Lerp 動態漸變與 PWM 背光控制。
-   - **品質規範**：標準 Git VCS commit 歷史、模組化目錄結構與開源規格文件。
 
 ---
 
 ## 🙏 致謝與參考專案 (Acknowledgements & Inspiration)
 
-本專案之概念與 UI 構想靈感源自於以下優秀的開源專案：
+本專案之 UI 概念與靈感源自：
 - 🌟 **[HermannBjorgvin/Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter)** - 原創的 Claude Usage 實體儀表板專案。
 
-本專案將該靈感轉化並適配至更普及、易於取得的平價硬體模組（如通用 ESP32-S 開發板與 2.2" SPI TFT LCD 顯示屏），讓更多社群玩家與開發者能輕鬆 DIY 屬於自己的 ClaudeAI 即時狀態儀表板。
+本專案將該構想適配並重構至更常見、便宜的平價模組（ESP32-S + 2.2" SPI TFT 螢幕），方便大家輕鬆 DIY！
 
 ---
 
 ## 📄 授權條款 (License)
 
-本專案採用 [MIT License](LICENSE) 條款開源發行。歡迎自由分支與修飾！
+本專案採用 [MIT License](LICENSE) 條款開源發行。
