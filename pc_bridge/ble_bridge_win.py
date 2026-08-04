@@ -1,11 +1,19 @@
 import asyncio
 import os
 import struct
+import sys
 from datetime import datetime
 from dateutil import parser, tz
 from dotenv import load_dotenv
 from curl_cffi import requests
 from bleak import BleakClient, BleakScanner
+
+# 確保控制台輸出正常處理 UTF-8 字元 (避免 Windows CP950 編碼錯誤)
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 # ================= 載入設定 =================
 load_dotenv()
@@ -19,7 +27,7 @@ USER_AGENT = os.getenv(
 
 if not COOKIE_STRING or not ORG_ID:
     print("=================================================================")
-    print("[⚠️ 警告] 未檢測到完整的 CLAUDE_COOKIE 或 CLAUDE_ORG_ID 設定！")
+    print("[WARNING] 未檢測到完整的 CLAUDE_COOKIE 或 CLAUDE_ORG_ID 設定！")
     print("請先將根目錄下的 .env.example 複製為 .env，並填入您的認證資訊。")
     print("=================================================================")
 
@@ -107,7 +115,7 @@ def fetch_data_sync():
             packet = struct.pack("BBBBBBBB", s_util, s_h, s_m, w_util, w_mon, w_day, w_h, w_m)
 
             # Terminal 日誌印出
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] 📊 額度數據讀取成功：")
+            print(f"[{datetime.now().strftime('%H:%M:%S')}] 額度數據讀取成功：")
             print(f" ├─ 5-Hour Session : {s_util}% (重置時間: {s_reset_str})")
             print(f" └─ 7-Day Weekly   : {w_util}% (重置時間: {w_reset_str})")
 
