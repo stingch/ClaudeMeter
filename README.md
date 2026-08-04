@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <b>一個基於常見 ESP32-S + 2.2" TFT 螢幕與電腦端 BLE Bridge 的即時 Claude AI 額度儀表板</b><br>
+  <b>基於 ESP32-S + 2.2" TFT 螢幕與電腦端 BLE Bridge 的即時 Claude AI 額度儀表板</b><br>
   <i>A desktop hardware monitor that displays your Claude AI usage and rate limits in real-time over Bluetooth Low Energy.</i>
 </p>
 
@@ -17,21 +17,17 @@
 
 ## 展示 (Preview)
 
-> 您可以在此放入您製作好的 ESP32 實體照片或動態展示 GIF。
-
 | 實體儀表板展示 | 雙層額度卡片與動態動畫 |
 | :---: | :---: |
-| *(請補充您的 ESP32 螢幕照片 `docs/images/device_preview.jpg`)* | *(請補充動畫展示 `docs/images/ui_demo.gif`)* |
+| ![Device Preview](docs/images/device_preview.jpeg) | ![UI Demo](docs/images/ui_demo.gif) |
 
 ---
 
 ## 硬體需求與材料清單 (Bill of Materials)
 
-本專案採用常見、便宜且易於取得的硬體模組：
-
-- **ESP32-S 開發板** (如 ESP32-WROOM-32 或 ESP32-S3) x 1
-- **2.2" / 2.4" TFT SPI LCD 顯示螢幕** (解析度 320x240，驅動晶片 ST7789 或 ILI9341) x 1
-- **杜邦線 / 面包板** 若干
+- **ESP32-S 開發板** (ESP32-WROOM-32) x 1
+- **2.2" TFT SPI LCD 顯示螢幕** (解析度 320x240，驅動晶片為 ILI9341) x 1
+- **杜邦線 / 面包板** 若干 (最少需要8條杜邦線)
 
 ---
 
@@ -72,7 +68,7 @@ sequenceDiagram
 
 ---
 
-## 快速復現與安裝步驟 (Setup Guide)
+## 安裝步驟 (Setup Guide)
 
 ### 步驟 1：燒錄 ESP32 韌體 (`esp32_firmware/`)
 
@@ -172,7 +168,7 @@ python pc_bridge/ble_bridge_MacOS.py
 本專案之 UI 概念與靈感源自：
 - **[HermannBjorgvin/Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter)** - 原創的 Claude Usage 實體儀表板專案。
 
-本專案將該構想適配並重構至更常見、便宜的平價模組（ESP32-S + 2.2" SPI TFT 螢幕），方便大家輕鬆 DIY！
+本專案將該構想適配並重構至更常見、便宜的平價模組（ESP32-S + 2.2" SPI TFT 螢幕），為開源社群貢獻一份心力！
 
 ---
 
