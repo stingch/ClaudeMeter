@@ -17,9 +17,10 @@
 
 ## 展示 (Preview)
 
-| 實體儀表板展示 | 雙層額度卡片與動態動畫 |
-| :---: | :---: |
-| ![Device Preview](docs/images/device_preview.jpeg) | ![UI Demo](docs/images/ui_demo.gif) |
+<p align="center">
+  <img src="docs/images/device_preview.jpeg" width="48%" alt="Device Preview">
+  <img src="docs/images/ui_demo.gif" width="48%" alt="UI Demo">
+</p>
 
 ---
 
