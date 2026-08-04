@@ -1,0 +1,35 @@
+# Environment & Secret files
+.env
+*.env
+
+# Python Virtual Environments
+venv/
+env/
+ENV/
+Include/
+Lib/
+Scripts/
+pyvenv.cfg
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE & Editor Settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS System Files
+.DS_Store
+Thumbs.db
+
+# Build Artifacts
+build/
+dist/
+*.hex
+*.elf
+*.bin
