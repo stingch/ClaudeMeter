@@ -1,4 +1,4 @@
-# 🤖 ClaudeMeter
+# ClaudeMeter
 
 <p align="center">
   <img src="https://img.shields.io/badge/ESP32-TFT_eSPI-orange.svg" alt="ESP32">
@@ -15,18 +15,17 @@
 
 ---
 
-## 📷 展示 (Preview)
+## 展示 (Preview)
 
-> [!TIP]
-> 💡 您可以在此放入您製作好的 ESP32 實體照片或動態展示 GIF。
+> 您可以在此放入您製作好的 ESP32 實體照片或動態展示 GIF。
 
-| 🖥️ 實體儀表板展示 | 📊 雙層額度卡片與動態動畫 |
+| 實體儀表板展示 | 雙層額度卡片與動態動畫 |
 | :---: | :---: |
 | *(請補充您的 ESP32 螢幕照片 `docs/images/device_preview.jpg`)* | *(請補充動畫展示 `docs/images/ui_demo.gif`)* |
 
 ---
 
-## 🛠️ 硬體需求與材料清單 (Bill of Materials)
+## 硬體需求與材料清單 (Bill of Materials)
 
 本專案採用常見、便宜且易於取得的硬體模組：
 
@@ -36,7 +35,7 @@
 
 ---
 
-## 🔌 螢幕接線指南 (Pinout Table)
+## 螢幕接線指南 (Pinout Table)
 
 | ESP32-S 腳位 | TFT 螢幕腳位 | 說明 |
 | :--- | :--- | :--- |
@@ -51,7 +50,7 @@
 
 ---
 
-## ⚡ 運作原理 (How It Works)
+## 運作原理 (How It Works)
 
 ```mermaid
 sequenceDiagram
@@ -73,7 +72,7 @@ sequenceDiagram
 
 ---
 
-## 💻 快速復現與安裝步驟 (Setup Guide)
+## 快速復現與安裝步驟 (Setup Guide)
 
 ### 步驟 1：燒錄 ESP32 韌體 (`esp32_firmware/`)
 
@@ -112,9 +111,9 @@ sequenceDiagram
 
 ---
 
-## 🏃 啟動執行 (Usage)
+## 啟動執行 (Usage)
 
-### 🖥️ Windows (完整測試通過)
+### Windows (完整測試通過)
 
 確定電腦藍芽已開啟，並執行：
 
@@ -124,10 +123,9 @@ python pc_bridge/ble_bridge_win.py
 
 ---
 
-### 🍎 macOS (⚠️ 未測試 / Experimental)
+### macOS (未測試 / Experimental)
 
-> [!WARNING]
-> macOS 腳本目前為**實驗性/未測試版本 (Experimental / Untested)**。由於 CoreBluetooth 權限機制，macOS 腳本以 BLE GATT Server 模式運行。
+> **注意**：macOS 腳本目前為**實驗性/未測試版本 (Experimental / Untested)**。由於 CoreBluetooth 權限機制，macOS 腳本以 BLE GATT Server 模式運行。
 
 ```bash
 python pc_bridge/ble_bridge_MacOS.py
@@ -135,7 +133,7 @@ python pc_bridge/ble_bridge_MacOS.py
 
 ---
 
-## 📦 BLE 數據通訊格式 (Protocol)
+## BLE 數據通訊格式 (Protocol)
 
 | Byte 索引 | 數據意義 | 型別 | 範例 |
 | :--- | :--- | :--- | :--- |
@@ -150,7 +148,7 @@ python pc_bridge/ble_bridge_MacOS.py
 
 ---
 
-## ❓ 疑難排解 (Troubleshooting)
+## 疑難排解 (Troubleshooting)
 
 <details>
 <summary><b>1. 找不到 ESP32 裝置？</b></summary>
@@ -169,15 +167,15 @@ python pc_bridge/ble_bridge_MacOS.py
 
 ---
 
-## 🙏 致謝與參考專案 (Acknowledgements & Inspiration)
+## 致謝與參考專案 (Acknowledgements & Inspiration)
 
 本專案之 UI 概念與靈感源自：
-- 🌟 **[HermannBjorgvin/Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter)** - 原創的 Claude Usage 實體儀表板專案。
+- **[HermannBjorgvin/Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter)** - 原創的 Claude Usage 實體儀表板專案。
 
 本專案將該構想適配並重構至更常見、便宜的平價模組（ESP32-S + 2.2" SPI TFT 螢幕），方便大家輕鬆 DIY！
 
 ---
 
-## 📄 授權條款 (License)
+## 授權條款 (License)
 
 本專案採用 [MIT License](LICENSE) 條款開源發行。
