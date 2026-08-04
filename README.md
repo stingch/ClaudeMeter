@@ -26,6 +26,16 @@
 
 ---
 
+## 💡 專案緣起與解決痛點 (Problem Statement & Motivation)
+
+> **「重度使用 AI 程式開發時，最怕心流中斷於突如其來的額度限制限制。」**
+
+Claude.ai 提供了強大的 AI 輔助能力，但其 **5-Hour Session 彈性額度** 與 **7-Day Weekly 總額度** 的計算機制對開發者而言較為隱晦。使用者若僅依靠網頁介面，無法在開發過程中即時掌握剩餘額度與倒數重置時間，經常面臨寫程式寫到一半突然觸發 Rate Limit 的窘境。
+
+本專案旨在解決此痛點：**打造一個獨立、無感且低功耗的桌面實體儀表板**。開發者只需抬頭一瞥即可掌握即時狀態，無須切換瀏覽器分頁，完整保護專注開發的心流 (Flow State)。
+
+---
+
 ## 🚀 專案亮點 (Key Features)
 
 - 🎨 **精緻流暢 UI/UX 設計**：採用 320x240 ST7789/ILI9341 TFT 雙緩衝繪製，支援 60 FPS 平滑數值漸變 (Lerp Animation)。
@@ -222,14 +232,22 @@ python pc_bridge/ble_bridge_MacOS.py
 </ul>
 </details>
 
-## 👤 個人特質與專案初衷 (Personal Qualities & Philosophy)
+## 👤 個人特質：痛點驅動、規劃與全棧實作 (Core Engineering Competencies)
 
-本專案展現了作者在軟硬體整合領域的以下核心特質：
+本專案展現了作者作為 Full-Stack / IoT 工程師的核心素養與個人特質：
 
-- 🧠 **縝密的系統規劃能力 (Rigor in System Planning)**：不盲目寫程式，而是在開發前評估 MCU 記憶體開銷、傳輸協定優劣與認證隱私，選擇最優化的二進位封包與 BLE 橋接架構。
-- ⚙️ **強大的技術實作與除錯力 (Hands-on Technical Excellence)**：涵蓋 Python 非同步網絡與反爬蟲擬態、C++ ESP32 韌體控制、BLE 通訊、雙緩衝 60 FPS 繪圖引擎至跨平台支援。
-- 🎨 **對產品品質與 UX 的極致追求 (Obsession with Quality & UX)**：不滿足於 MVP (最小可行性產品)，主動引入 Lerp 平滑動畫、自訂像素點陣視覺與動態懸浮，打造令人驚艷的實體桌面週邊。
-- 🔒 **重視資安與程式碼規範 (Security & Clean Code Ownership)**：堅持敏感資料隔離、建立環境變數規範與撰寫高品質說明文件，具備生產環境等級的 Code Owner 責任感。
+1. 🎯 **痛點驅動與產品思維 (Problem-Driven & Product Mindset)**：
+   - 不盲目追求複雜技術，而是從真實開發痛點（AI 額度限制中斷心流）出發，設計出極簡、高實用性的桌面輔助硬體。
+
+2. 🧠 **縝密的系統規劃能力 (Strategic System Planning)**：
+   - **通訊效能規劃**：評估 MCU 記憶體限制，放棄傳統 JSON 解析，規劃 8-Byte 二進位純數據協定將通訊開銷降低 >95%。
+   - **軟硬體分工規劃**：將高開銷的 API 抓取與反爬蟲擬態放在 PC 端，ESP32 僅專注 Low-power BLE 接收與 60 FPS UI 渲染。
+   - **資安規劃**：規範 `.env` 憑證隔離與範本提醒機制，確保開源安全。
+
+3. ⚙️ **端到端硬核實作與除錯力 (End-to-End Implementation Excellence)**：
+   - **雲端/網頁端**：Python `asyncio` 非同步架構 + `curl_cffi` 瀏覽器指紋擬態。
+   - **韌體/硬體端**：C++ ESP32 BLE GATT 服務、`TFT_eSPI` 雙緩衝 60 FPS 繪圖引擎、Lerp 動態漸變與 PWM 背光控制。
+   - **品質規範**：標準 Git VCS commit 歷史、模組化目錄結構與開源規格文件。
 
 ---
 
