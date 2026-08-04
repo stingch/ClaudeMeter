@@ -10,7 +10,7 @@
 
 <p align="center">
   <b>一個基於 ESP32 TFT LCD 螢幕與電腦端 BLE Bridge 的即時 Claude AI 額度儀表板</b><br>
-  <i>Real-time Claude AI Session & Weekly Usage Monitor over Bluetooth Low Energy</i>
+  <i>靈感來自開源專案 <a href="https://github.com/HermannBjorgvin/Clawdmeter">HermannBjorgvin/Clawdmeter</a>，採用常見 ESP32-S + 2.2" TFT 模組實現</i>
 </p>
 
 ---
@@ -200,6 +200,13 @@ python pc_bridge/ble_bridge_MacOS.py
   <li>檢查 <code>TFT_eSPI</code> 的 <code>User_Setup.h</code> 設定是否對應您採用的螢幕驅動（ST7789 / ILI9341）與正確腳位。</li>
 </ul>
 </details>
+
+## 🙏 致謝與參考專案 (Acknowledgements & Inspiration)
+
+本專案之概念與 UI 構想靈感源自於以下優秀的開源專案：
+- 🌟 **[HermannBjorgvin/Clawdmeter](https://github.com/HermannBjorgvin/Clawdmeter)** - 原創的 Claude Usage 實體儀表板專案。
+
+本專案將該靈感轉化並適配至更普及、易於取得的平價硬體模組（如通用 ESP32-S 開發板與 2.2" SPI TFT LCD 顯示屏），讓更多社群玩家與開發者能輕鬆 DIY 屬於自己的 ClaudeAI 即時狀態儀表板。
 
 ---
 
