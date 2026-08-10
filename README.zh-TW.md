@@ -212,7 +212,7 @@ Cookie 可能已過期，請重新登入 Claude.ai 並更新 <code>.env</code> �
 
 ---
 
-## 開發者
+## 給開發者
 
 `pc_bridge/` 底下 win / macOS 兩支腳本共用的設定讀取、時間解析、Usage API 抓取邏輯都集中在 `pc_bridge/common.py`。若要修改或貢獻程式碼，建議先安裝開發依賴並跑過以下檢查：
 
