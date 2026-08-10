@@ -1,6 +1,7 @@
 # ClaudeMeter
 
 <p align="center">
+  <img src="https://github.com/stingch/ClaudeMeter/actions/workflows/ci.yml/badge.svg" alt="CI Status">
   <img src="https://img.shields.io/badge/ESP32-TFT_eSPI-orange.svg" alt="ESP32">
   <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python Version">
   <img src="https://img.shields.io/badge/BLE-Bluetooth_5.0-brightgreen.svg" alt="BLE">
@@ -58,13 +59,13 @@ sequenceDiagram
 
     PC->>Claude: 定時抓取 Usage API (Cookie 認證)
     Claude-->>PC: 回傳 Usage JSON
-    PC->>PC: 壓縮為 8-Bytes 數據封包
+    PC->>PC: 壓縮為 9-Bytes 數據封包
     PC->>ESP32: 經由 BLE 發送數據
     ESP32->>ESP32: 60 FPS 平滑動畫渲染螢幕
 ```
 
-1. 電腦端 Python 腳本每 60 秒透過已登入的 Cookie 抓取 [Claude.ai](https://claude.ai) API。
-2. 腳本將 Session (5-Hour) 與 Weekly (7-Day) 的額度百分比與倒數重置時間打包為 **8 個 Byte** 的輕量封包。
+1. 電腦端 Python 腳本預設每 60 秒透過已登入的 Cookie 抓取 [Claude.ai](https://claude.ai) API(間隔秒數可在 `.env` 的 `POLL_INTERVAL_SECONDS` 調整)。
+2. 腳本將 Session (5-Hour) 與 Weekly (7-Day) 的額度百分比、倒數重置時間，以及螢幕背光亮度，打包為 **9 個 Byte** 的輕量封包。
 3. 透過低功耗藍芽 (BLE) 無感發送給 ESP32，ESP32 收到後即時更新流暢的 UI 視覺卡片與漸變進度條。
 
 ---
@@ -73,11 +74,22 @@ sequenceDiagram
 
 ### 步驟 1：燒錄 ESP32 韌體 (`esp32_firmware/`)
 
-1. 開啟 [Arduino IDE](https://www.arduino.cc/en/software)。
-2. 安裝 ESP32 開發板支援 (板子管理員搜尋 `esp32` 並安裝)。
-3. 在庫管理員中搜尋並安裝 **TFT_eSPI** 函式庫。
-4. 設定 `TFT_eSPI` 的 `User_Setup.h`（根據上面的接線對應 GPIO 腳位與螢幕晶片）。
-5. 打開 [`esp32_firmware/ClaudeMeter.ino`](file:///c:/Users/Jessie/Documents/code/Personal/Python%20Codes/claudeMeter/esp32_firmware/ClaudeMeter.ino)，選擇板子與序列埠後點擊 **Upload (燒錄)**。
+本專案韌體改用 **PlatformIO** 建置(原始碼在 `esp32_firmware/src/main.cpp`)。相較 Arduino IDE，PlatformIO 不需要手動修改 `TFT_eSPI` 函式庫內的 `User_Setup.h` ——螢幕驅動晶片與腳位設定已經寫在 `esp32_firmware/platformio.ini` 的 `build_flags` 裡，隨 repo 一起版本控制，不會跟你電腦上其他也用到 `TFT_eSPI` 的專案互相覆蓋。
+
+1. 安裝 [PlatformIO](https://platformio.org/install/cli)：
+   - **VSCode 使用者**：安裝 PlatformIO IDE 擴充套件，安裝完成後用 VSCode 開啟 `esp32_firmware/` 資料夾。
+   - **命令列使用者**：`pip install platformio`。
+2. 用 USB 連接 ESP32 開發板到電腦。
+3. 燒錄韌體：
+   - VSCode：點擊左側 PlatformIO 圖示 → **Upload**。
+   - 命令列：
+     ```bash
+     cd esp32_firmware
+     pio run --target upload
+     ```
+4. 若螢幕接線或驅動晶片跟預設不同，直接編輯 `esp32_firmware/platformio.ini` 裡的 `build_flags`（對照上面的接線表調整）即可，不需要碰 `TFT_eSPI` 函式庫本身的檔案。
+
+> `esp32_firmware/ClaudeMeter/ClaudeMeter.ino` 是舊版 Arduino IDE 專案，已停用，請改用上述 PlatformIO 流程。
 
 ---
 
@@ -105,6 +117,8 @@ sequenceDiagram
    
    pip install -r requirements.txt
    ```
+
+   > 只是要執行 bridge 腳本的話，裝 `requirements.txt` 就夠了。若想額外跑 lint / 格式化 / 型別檢查（例如要貢獻程式碼），再另外安裝 `pip install -r requirements-dev.txt`。
 
 ---
 
@@ -142,6 +156,9 @@ python pc_bridge/ble_bridge_MacOS.py
 | `Byte 5` | 7-Day 重置日期 (Day) | `uint8_t` (1~31) | `10` |
 | `Byte 6` | 7-Day 重置小時 (Hour) | `uint8_t` (0~23) | `14` |
 | `Byte 7` | 7-Day 重置分鐘 (Minute) | `uint8_t` (0~59) | `0` |
+| `Byte 8` | 螢幕背光亮度 (Brightness，可選) | `uint8_t` (0~255) | `200` |
+
+> `Byte 8` 為可選欄位：韌體 `onWrite` 只在收到 ≥9 bytes 時才會套用亮度，收到 8 bytes（舊版封包）也能正常運作，只是不會調整背光。可在 `.env` 用 `BRIGHTNESS` 調整送出的亮度值。
 
 ---
 
@@ -159,8 +176,24 @@ python pc_bridge/ble_bridge_MacOS.py
 
 <details>
 <summary><b>3. 螢幕白屏或顯示錯亂？</b></summary>
-請檢查 SPI 接線以及 <code>TFT_eSPI</code> 函式庫中的 <code>User_Setup.h</code> 設定是否與您的螢幕晶片（ST7789/ILI9341）匹配。
+請檢查 SPI 接線是否正確，並確認 <code>esp32_firmware/platformio.ini</code> 裡 <code>build_flags</code> 的驅動晶片與腳位設定（<code>ILI9341_DRIVER</code>、<code>TFT_MOSI</code>/<code>TFT_SCLK</code>/<code>TFT_CS</code>/<code>TFT_DC</code>/<code>TFT_RST</code> 等）是否與您實際的接線相符。
 </details>
+
+---
+
+## 開發者 (Development)
+
+`pc_bridge/` 底下 win / macOS 兩支腳本共用的設定讀取、時間解析、Usage API 抓取邏輯都集中在 `pc_bridge/common.py`。若要修改或貢獻程式碼，建議先安裝開發依賴並跑過以下檢查：
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+
+ruff check pc_bridge      # lint
+black --check pc_bridge   # 格式檢查（要自動排版就把 --check 拿掉）
+mypy pc_bridge             # 型別檢查
+```
+
+專案設有 GitHub Actions（`.github/workflows/ci.yml`），push / PR 到 `main` 時會自動跑上述三項檢查。
 
 ---
 

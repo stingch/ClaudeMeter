@@ -33,3 +33,8 @@ dist/
 *.hex
 *.elf
 *.bin
+
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
