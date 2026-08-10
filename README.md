@@ -1,7 +1,7 @@
 # ClaudeMeter
 
 <p align="center">
-  <img src="https://github.com/stingch/ClaudeMeter/actions/workflows/ci.yml/badge.svg" alt="CI Status">
+  <img src="https://github.com/stingch/ClaudeMeter/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI Status">
   <img src="https://img.shields.io/badge/ESP32-TFT_eSPI-orange.svg" alt="ESP32">
   <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python Version">
   <img src="https://img.shields.io/badge/BLE-Bluetooth_5.0-brightgreen.svg" alt="BLE">
