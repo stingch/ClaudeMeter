@@ -38,3 +38,7 @@ dist/
 .pio/
 .pioenvs/
 .piolibdeps/
+
+# 吉祥物預覽工具的輸出
+mascot_preview.gif
+mascot_preview.png

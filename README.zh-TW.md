@@ -28,13 +28,15 @@
 
 ## 動機
 
-Claude 是我覺得很好用的工具，但缺點是 token 消耗速度很快，尤其討論到一半突然被告知額度用完，會有一種「token 焦慮」。雖然我目前還是學生，不像全職開發者需要整天密集跟 Claude 互動，但如果能隨時知道目前的用量，就能幫我調整一整天的任務順序——透過剩餘的 5 小時額度，決定接下來的任務該怎麼排、工作強度該拉多高。
+Claude 是我覺得很好用的工具，但缺點是 token 消耗速度很快，尤其討論到一半突然被告知額度用完，會有一種「token 焦慮」。雖然我目前還是學生，不像全職開發者需要整天密集跟 Claude 互動，但如果能隨時知道目前的用量，就能幫我調整一整天的任務順序；透過剩餘的 5 小時額度，決定該怎麼安排接下來的任務、工作強度該拉多高。
 
 我在 GitHub 上找過，發現有不少人做了裝在電腦上的第三方插件，代表這個痛點是真實存在的，不只我一個人有感覺。但我自己比較偏好看實體螢幕，對我來說比軟體介面更有連結感，所以沒有考慮直接用那些插件。
 
-稍微調查之後發現，市面上已經有整合度很高的成品專案（例如 HermannBjorgvin 的作品），但對我來說不容易取得，而且可能要負擔額外的費用。所以我決定用手邊就有、也算常見易取得的材料，自己規劃一組能顯示 token 用量的顯示器，最後的成果就是這個專案。
+稍微調查之後發現，市面上已經有整合度很高的成品專案（例如 HermannBjorgvin 的作品），也有不少優秀的作品fork自該專案。但對我來說，材料不容易取得，而且硬體成本是一筆額外的費用。所以我決定用手邊就有、也算常見易取得的材料，自己規劃一組能顯示 token 用量的顯示器，最後的成果就是這個專案。
 
-外殼的部分列為之後有空再做的項目。目前沒有太多時間畫外殼設計，所以先把核心功能做完、公開出來，外殼暫時擱置。
+雖然是簡化版本，但 ESP32 仍然可以獨立於電腦運作，也是基於上述原因，才設計讓ESP32採用BLE與PC端通訊。若再加上鋰電池以及充放電模組，就能直接放在桌面上當獨立擺飾。
+
+外殼的部分列為之後有空再做的項目。因為現在沒有太多時間畫外殼設計，所以現階段只能先把核心功能做完，外殼暫時擱置。
 
 ---
 
@@ -42,7 +44,7 @@ Claude 是我覺得很好用的工具，但缺點是 token 消耗速度很快，
 
 ### 從 Arduino IDE 換成 PlatformIO
 
-韌體最初用 Arduino IDE 開發，很快就撞上 `TFT_eSPI` 函式庫的老問題：螢幕設定得直接改函式庫資料夾裡的 `User_Setup.h`。但這對於每個 clone 這個 repo 的人而言並不友善，需要手動找到 Arduino 函式庫路徑、去改別人的原始碼，電腦上若還有其他專案也用同一顆函式庫，設定也會互相覆蓋。因此後期將韌體建置流程換成 PlatformIO，螢幕腳位與驅動晶片改用 `build_flags` 在編譯期注入，不需要碰函式庫本身，設定也隨 repo 一起進行版控，更易於使用及維護。
+韌體最初用 Arduino IDE 開發，很快就撞上 `TFT_eSPI` 函式庫的老問題：螢幕設定得直接改函式庫資料夾裡的 `User_Setup.h`。但這對於每個 clone 這個 repo 的人而言並不友善，需要手動找到 Arduino 函式庫路徑、去改別人的原始碼，電腦上若還有其他專案也用同一顆函式庫，設定也會互相覆蓋。因此後期加入 PlatformIO 建置流程，螢幕腳位與驅動晶片改用 `build_flags` 在編譯期注入，不需要碰函式庫本身，設定也隨 repo 一起進行版控，更易於使用及維護。習慣 Arduino IDE 的使用者仍可沿用原本的 `.ino` 專案。
 
 ### macOS 版本的已知問題
 
@@ -105,7 +107,18 @@ sequenceDiagram
 
 ### 步驟 1：燒錄 ESP32 韌體 (`esp32_firmware/`)
 
-本專案韌體改用 **PlatformIO** 建置(原始碼在 `esp32_firmware/src/main.cpp`)。相較 Arduino IDE，PlatformIO 不需要手動修改 `TFT_eSPI` 函式庫內的 `User_Setup.h` ——螢幕驅動晶片與腳位設定已經寫在 `esp32_firmware/platformio.ini` 的 `build_flags` 裡，隨 repo 一起版本控制，不會跟你電腦上其他也用到 `TFT_eSPI` 的專案互相覆蓋。
+韌體可以用 **PlatformIO** 或 **Arduino IDE** 燒錄，兩者是同一份程式碼，擇一即可：
+
+| | 原始碼位置 | 螢幕腳位設定在哪裡 |
+| --- | --- | --- |
+| **方式 A：PlatformIO**（推薦） | `esp32_firmware/src/main.cpp` | `esp32_firmware/platformio.ini` 的 `build_flags`，隨 repo 版控 |
+| **方式 B：Arduino IDE** | `esp32_firmware/ClaudeMeter/ClaudeMeter.ino` | `TFT_eSPI` 函式庫資料夾內的 `User_Setup.h`，需手動修改 |
+
+> 兩份原始碼內容相同，修改其中一份時請同步更新另一份。
+
+#### 方式 A：PlatformIO（推薦）
+
+PlatformIO 不需要手動修改 `TFT_eSPI` 函式庫內的 `User_Setup.h` ——螢幕驅動晶片與腳位設定已經寫在 `platformio.ini` 裡，不會跟你電腦上其他也用到 `TFT_eSPI` 的專案互相覆蓋。
 
 1. 安裝 [PlatformIO](https://platformio.org/install/cli)：
    - **VSCode 使用者**：安裝 PlatformIO IDE 擴充套件，安裝完成後用 VSCode 開啟 `esp32_firmware/` 資料夾。
@@ -118,9 +131,36 @@ sequenceDiagram
      cd esp32_firmware
      pio run --target upload
      ```
-4. 若螢幕接線或驅動晶片跟預設不同，直接編輯 `esp32_firmware/platformio.ini` 裡的 `build_flags`（對照上面的接線表調整）即可，不需要碰 `TFT_eSPI` 函式庫本身的檔案。
+4. 若螢幕接線或驅動晶片跟預設不同，直接編輯 `esp32_firmware/platformio.ini` 裡的 `build_flags`（對照上面的接線表調整）即可。
 
-> `esp32_firmware/ClaudeMeter/ClaudeMeter.ino` 是舊版 Arduino IDE 專案，已停用，請改用上述 PlatformIO 流程。
+#### 方式 B：Arduino IDE
+
+1. 在 **開發板管理員** 安裝 `esp32`（Espressif Systems），開發板選擇 **ESP32 Dev Module**。
+2. 在 **程式庫管理員** 安裝 `TFT_eSPI`（Bodmer）。
+3. 編輯函式庫內的 `User_Setup.h`（通常在 `文件/Arduino/libraries/TFT_eSPI/User_Setup.h`），確認以下設定未被註解，其餘驅動晶片的 `#define` 則註解掉：
+   ```cpp
+   #define ILI9341_DRIVER
+   #define TFT_WIDTH  240
+   #define TFT_HEIGHT 320
+
+   #define TFT_MOSI 23
+   #define TFT_SCLK 18
+   #define TFT_CS    5
+   #define TFT_DC   16
+   #define TFT_RST  17
+   #define TFT_BL   21
+   #define TFT_BACKLIGHT_ON HIGH
+
+   #define LOAD_GLCD
+   #define LOAD_FONT2
+   #define LOAD_FONT4
+   #define SMOOTH_FONT
+
+   #define SPI_FREQUENCY 40000000
+   ```
+4. 用 Arduino IDE 開啟 `esp32_firmware/ClaudeMeter/ClaudeMeter.ino`，用 USB 連接 ESP32 後按 **上傳**。
+
+> ⚠️ 更新 `TFT_eSPI` 函式庫時，`User_Setup.h` 可能會被覆蓋回預設值，更新後請重新檢查。
 
 ---
 
@@ -207,7 +247,7 @@ Cookie 可能已過期，請重新登入 Claude.ai 並更新 <code>.env</code> �
 
 <details>
 <summary><b>3. 螢幕白屏或顯示錯亂？</b></summary>
-請檢查 SPI 接線是否正確，並確認 <code>esp32_firmware/platformio.ini</code> 裡 <code>build_flags</code> 的驅動晶片與腳位設定（<code>ILI9341_DRIVER</code>、<code>TFT_MOSI</code>/<code>TFT_SCLK</code>/<code>TFT_CS</code>/<code>TFT_DC</code>/<code>TFT_RST</code> 等）是否與實際接線相符。
+請檢查 SPI 接線是否正確，並確認驅動晶片與腳位設定（<code>ILI9341_DRIVER</code>、<code>TFT_MOSI</code>/<code>TFT_SCLK</code>/<code>TFT_CS</code>/<code>TFT_DC</code>/<code>TFT_RST</code> 等）與實際接線相符：PlatformIO 使用者檢查 <code>esp32_firmware/platformio.ini</code> 的 <code>build_flags</code>；Arduino IDE 使用者檢查 <code>TFT_eSPI</code> 函式庫內的 <code>User_Setup.h</code>（更新函式庫後可能被覆蓋回預設值）。
 </details>
 
 ---

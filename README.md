@@ -43,7 +43,7 @@ The enclosure is on the "later, when I have time" list. I don't have much time t
 
 ### Switching from Arduino IDE to PlatformIO
 
-The firmware started as an Arduino IDE sketch, but quickly hit a well-known pain point in the `TFT_eSPI` library: screen configuration has to be edited directly inside the library's own `User_Setup.h`. That's not friendly for anyone cloning the repo — they'd have to hunt down their Arduino libraries folder and edit someone else's source file, and if another project on the same machine also uses `TFT_eSPI`, the two configs would clobber each other. I later moved the firmware build to PlatformIO instead, injecting the panel driver and pin configuration through `build_flags` at compile time, so nothing outside the repo needs to be touched, the configuration is version-controlled with everything else, and it's easier to use and maintain.
+The firmware started as an Arduino IDE sketch, but quickly hit a well-known pain point in the `TFT_eSPI` library: screen configuration has to be edited directly inside the library's own `User_Setup.h`. That's not friendly for anyone cloning the repo — they'd have to hunt down their Arduino libraries folder and edit someone else's source file, and if another project on the same machine also uses `TFT_eSPI`, the two configs would clobber each other. I later added a PlatformIO build, injecting the panel driver and pin configuration through `build_flags` at compile time, so nothing outside the repo needs to be touched, the configuration is version-controlled with everything else, and it's easier to use and maintain. The original `.ino` sketch is still kept for anyone who prefers Arduino IDE.
 
 ### Known Issue: macOS Version
 
@@ -106,7 +106,18 @@ sequenceDiagram
 
 ### Step 1: Flash the ESP32 Firmware (`esp32_firmware/`)
 
-The firmware is built with **PlatformIO** (source at `esp32_firmware/src/main.cpp`). Unlike Arduino IDE, PlatformIO doesn't require manually editing `TFT_eSPI`'s `User_Setup.h` — the display driver and pin configuration are already defined in `esp32_firmware/platformio.ini`'s `build_flags`, version-controlled alongside the rest of the repo, and won't clash with other projects on your machine that also use `TFT_eSPI`.
+The firmware can be flashed with either **PlatformIO** or **Arduino IDE** — both use the same code, so pick one:
+
+| | Source file | Where the display pins are configured |
+| --- | --- | --- |
+| **Option A: PlatformIO** (recommended) | `esp32_firmware/src/main.cpp` | `build_flags` in `esp32_firmware/platformio.ini`, version-controlled with the repo |
+| **Option B: Arduino IDE** | `esp32_firmware/ClaudeMeter/ClaudeMeter.ino` | `User_Setup.h` inside the `TFT_eSPI` library folder, edited by hand |
+
+> The two source files have identical contents — if you change one, update the other too.
+
+#### Option A: PlatformIO (recommended)
+
+PlatformIO doesn't require manually editing `TFT_eSPI`'s `User_Setup.h` — the display driver and pin configuration are already defined in `platformio.ini`, and won't clash with other projects on your machine that also use `TFT_eSPI`.
 
 1. Install [PlatformIO](https://platformio.org/install/cli):
    - **VSCode users**: install the PlatformIO IDE extension, then open the `esp32_firmware/` folder in VSCode.
@@ -119,9 +130,36 @@ The firmware is built with **PlatformIO** (source at `esp32_firmware/src/main.cp
      cd esp32_firmware
      pio run --target upload
      ```
-4. If your wiring or display driver differs from the default, just edit the `build_flags` in `esp32_firmware/platformio.ini` (matching the pinout table above) — no need to touch the `TFT_eSPI` library itself.
+4. If your wiring or display driver differs from the default, just edit the `build_flags` in `esp32_firmware/platformio.ini` (matching the pinout table above).
 
-> `esp32_firmware/ClaudeMeter/ClaudeMeter.ino` is the old Arduino IDE project and is deprecated — use the PlatformIO flow above instead.
+#### Option B: Arduino IDE
+
+1. In **Boards Manager**, install `esp32` (by Espressif Systems) and select **ESP32 Dev Module** as the board.
+2. In **Library Manager**, install `TFT_eSPI` (by Bodmer).
+3. Edit the library's `User_Setup.h` (usually at `Documents/Arduino/libraries/TFT_eSPI/User_Setup.h`). Make sure the following lines are uncommented, and comment out every other driver `#define`:
+   ```cpp
+   #define ILI9341_DRIVER
+   #define TFT_WIDTH  240
+   #define TFT_HEIGHT 320
+
+   #define TFT_MOSI 23
+   #define TFT_SCLK 18
+   #define TFT_CS    5
+   #define TFT_DC   16
+   #define TFT_RST  17
+   #define TFT_BL   21
+   #define TFT_BACKLIGHT_ON HIGH
+
+   #define LOAD_GLCD
+   #define LOAD_FONT2
+   #define LOAD_FONT4
+   #define SMOOTH_FONT
+
+   #define SPI_FREQUENCY 40000000
+   ```
+4. Open `esp32_firmware/ClaudeMeter/ClaudeMeter.ino` in Arduino IDE, connect the ESP32 via USB, and click **Upload**.
+
+> ⚠️ Updating the `TFT_eSPI` library may reset `User_Setup.h` to its defaults — re-check it after every update.
 
 ---
 
@@ -208,7 +246,7 @@ Your cookie has probably expired. Log into Claude.ai again and update <code>CLAU
 
 <details>
 <summary><b>3. Blank or garbled display?</b></summary>
-Check your SPI wiring, and confirm the driver/pin settings in <code>esp32_firmware/platformio.ini</code>'s <code>build_flags</code> (<code>ILI9341_DRIVER</code>, <code>TFT_MOSI</code>/<code>TFT_SCLK</code>/<code>TFT_CS</code>/<code>TFT_DC</code>/<code>TFT_RST</code>, etc.) match your actual wiring.
+Check your SPI wiring, and confirm the driver/pin settings (<code>ILI9341_DRIVER</code>, <code>TFT_MOSI</code>/<code>TFT_SCLK</code>/<code>TFT_CS</code>/<code>TFT_DC</code>/<code>TFT_RST</code>, etc.) match your actual wiring: PlatformIO users should check the <code>build_flags</code> in <code>esp32_firmware/platformio.ini</code>; Arduino IDE users should check <code>User_Setup.h</code> inside the <code>TFT_eSPI</code> library (updating the library may reset it to defaults).
 </details>
 
 ---

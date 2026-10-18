@@ -43,6 +43,10 @@ CLAUDE_API_URL: str = f"https://claude.ai/api/organizations/{ORG_ID}/usage"
 DEVICE_NAME = "ClaudeMeter"
 SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 CHARACTERISTIC_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+
+# 封包第 10 個 byte：資料狀態旗標 (須與韌體 main.cpp 的 DataState 對應)
+STATUS_OK = 0       # 有正常的額度數據
+STATUS_NO_DATA = 1  # API 回 200 但沒有任何額度視窗（例如免費方案）
 # ============================================
 
 log = logging.getLogger("claudemeter")
@@ -107,17 +111,57 @@ def parse_iso_datetime(iso_str: str | None) -> ResetTime:
 
 
 def _normalize_utilization(raw: float) -> int:
-    """API 若回傳 <= 1.0 代表舊格式(小數)，若 > 1.0 代表新格式(百分比)"""
-    val = raw * 100 if raw <= 1.0 else raw
-    return min(max(round(val), 0), 100)
+    """
+    把 API 的 utilization 轉成 0~100 的整數百分比。
+
+    API 回傳的已經是百分比（例如 23.0 代表 23%），直接取整即可。
+
+    注意：舊版這裡用「<= 1.0 就當成小數再乘 100」的猜測法，但百分比格式下
+    剛重置時的用量常常就是 0.x% 或 1.0%，會被誤判成 50%、100%，
+    造成「額度一重置 Current 反而顯示 100%」的 bug，所以拿掉這個猜測。
+    """
+    return min(max(round(raw), 0), 100)
+
+
+def _pack(
+    s_util: int = 0,
+    s_reset: ResetTime = ResetTime(0, 0, 0, 0),
+    w_util: int = 0,
+    w_reset: ResetTime = ResetTime(0, 0, 0, 0),
+    status: int = STATUS_OK,
+) -> bytes:
+    """
+    打包 10-byte 封包：
+    [s_util, s_h, s_m, w_util, w_mon, w_day, w_h, w_m, brightness, status]
+
+    後兩個 byte（brightness / status）都是可選的，舊韌體只讀前 8 或 9 個 byte
+    仍可正常運作。
+    """
+    return struct.pack(
+        "BBBBBBBBBB",
+        s_util,
+        s_reset.hour,
+        s_reset.minute,
+        w_util,
+        w_reset.month,
+        w_reset.day,
+        w_reset.hour,
+        w_reset.minute,
+        BRIGHTNESS,
+        status,
+    )
 
 
 def fetch_usage_packet() -> bytes | None:
     """
-    同步抓取 Claude.ai Usage API，回傳打包好的 9-byte 封包：
-    [s_util, s_h, s_m, w_util, w_mon, w_day, w_h, w_m, brightness]
-    第 9 個 byte（brightness）為可選的螢幕背光亮度，韌體若收到少於 9 bytes
-    仍會照常運作、僅略過調整亮度。失敗時回傳 None。
+    同步抓取 Claude.ai Usage API，回傳打包好的 10-byte 封包（格式見 _pack）。
+
+    三種結果：
+      - 正常取得數據           -> 回傳 status=STATUS_OK 的封包
+      - API 通了但沒有額度數據 -> 回傳 status=STATUS_NO_DATA 的封包，讓螢幕明確
+                                 顯示「無數據」而不是誤導性的 0%
+      - 認證缺失 / 網路或 HTTP 失敗 -> 回傳 None，不送任何東西；韌體會在逾時後
+                                 自己切換成 Offline 狀態
     """
     if not has_credentials():
         return None
@@ -149,19 +193,39 @@ def fetch_usage_packet() -> bytes | None:
     if res.status_code != 200:
         log.error("HTTP 錯誤: %s", res.status_code)
         log.error("伺服器回應內文: %s", res.text[:200])
+        if res.status_code in (401, 403):
+            log.error("=> Cookie 很可能已經過期，請重新從瀏覽器複製一份到 .env")
         return None
 
-    data = res.json()
-    five_hr = data.get("five_hour", {}) or {}
-    seven_day = data.get("seven_day", {}) or {}
+    try:
+        data = res.json()
+    except Exception:
+        log.error("回應不是合法的 JSON: %s", res.text[:200])
+        return None
+
+    five_hr = data.get("five_hour") or {}
+    seven_day = data.get("seven_day") or {}
+    limits = data.get("limits") or []
+
+    # ---- 關鍵防呆：API 回 200 但整包都是 null / 空的 ----
+    # 免費方案沒有五小時 / 七天的額度視窗，此時所有欄位都會是 null。
+    # 舊版程式在這裡會算出 0% 送給螢幕，看起來就像「用量真的是 0」，
+    # 完全無法跟正常狀態區分。現在改成送出明確的 NO_DATA 狀態。
+    if not five_hr and not seven_day and not limits:
+        log.warning("=" * 65)
+        log.warning("API 回 200，但沒有任何額度數據（five_hour / seven_day / limits 全空）")
+        log.warning("最常見原因：這個帳號是免費方案，沒有五小時 / 七天的額度視窗。")
+        log.warning("已送出 NO_DATA 狀態，螢幕會顯示「No usage data」而非 0%%。")
+        log.warning("=" * 65)
+        return _pack(status=STATUS_NO_DATA)
 
     s_util = _normalize_utilization(five_hr.get("utilization", 0) or 0)
     w_util = _normalize_utilization(seven_day.get("utilization", 0) or 0)
 
     # 抓取 ISO 時間字串 (session 重置時間可能在 limits 陣列裡)
     s_reset_iso = five_hr.get("resets_at")
-    if not s_reset_iso and "limits" in data:
-        for lim in data.get("limits", []):
+    if not s_reset_iso:
+        for lim in limits:
             if lim.get("kind") == "session" and lim.get("resets_at"):
                 s_reset_iso = lim.get("resets_at")
                 break
@@ -170,24 +234,11 @@ def fetch_usage_packet() -> bytes | None:
     s_reset = parse_iso_datetime(s_reset_iso)
     w_reset = parse_iso_datetime(w_reset_iso)
 
-    packet = struct.pack(
-        "BBBBBBBBB",
-        s_util,
-        s_reset.hour,
-        s_reset.minute,
-        w_util,
-        w_reset.month,
-        w_reset.day,
-        w_reset.hour,
-        w_reset.minute,
-        BRIGHTNESS,
-    )
-
     log.info("額度數據讀取成功：")
     log.info(" ├─ 5-Hour Session : %s%% (重置時間: %s)", s_util, s_reset.format_short())
     log.info(" └─ 7-Day Weekly   : %s%% (重置時間: %s)", w_util, w_reset.format_full())
 
-    return packet
+    return _pack(s_util, s_reset, w_util, w_reset, STATUS_OK)
 
 
 def timestamp() -> str:
